@@ -3,7 +3,7 @@
 This project (HSE – Higher School of Economics) explores transformer-based vision–language models for the task of **image captioning**.  
 The main focus is evaluating how fine-tuning strategies influence model performance.
 
-We use **Qwen/Qwen3-VL-2B-Instruct** as the base model and the **Flickr30k** dataset (`nlphuji/flickr30k`) for experiments.
+We use **Qwen/Qwen3-VL-2B-Instruct** and **BLIP framework** as the base models and the **Flickr30k** dataset (`Mozilla/flickr30k-transformed-captions-gpt4o`) for experiments.
 
 #### HuggingFace link: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
 ---
@@ -30,7 +30,7 @@ To study transformer architectures for image captioning, compare baseline and fi
 
 ## 2. Model Architecture Selection and Baseline Evaluation
 
-- Select the primary architecture (**Qwen3-VL-2B-Instruct**) and optionally alternative lightweight VLMs for comparison.  
+- Select the primary architecture and optionally alternative lightweight VLMs for comparison.  
 - Justify the choice using references to papers or benchmarks.  
 - Run a **baseline evaluation** without fine-tuning to measure initial model performance.  
 - **Deliverables:** brief rationale and links to sources.
@@ -80,15 +80,15 @@ To study transformer architectures for image captioning, compare baseline and fi
 
 # 📚 Dataset
 
-**Flickr30k**  
-#### HuggingFace link: https://huggingface.co/datasets/nlphuji/flickr30k
+**flickr30k-transformed-captions-gpt4o**  
+#### HuggingFace link: https://huggingface.co/datasets/Mozilla/flickr30k-transformed-captions-gpt4o
 
 ---
 
-# 🧠 Model
+# 🧠 Models and Frameworks
 
 **Qwen/Qwen3-VL-2B-Instruct** – Vision–language transformer used as the main architecture for caption generation.
-
+**BLIP** - (Bootstrapped Language-Image Pretraining) is a vision-language pretraining (VLP) framework designed for both understanding and generation tasks.
 ---
 
 # 📄 License
