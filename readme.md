@@ -4,6 +4,7 @@ This project (HSE – Higher School of Economics) explores transformer-based vis
 The main focus is evaluating how different visual encoders and fine-tuning strategies influence model performance.
 
 We use **Qwen/Qwen3-VL-2B-Instruct** as the base model and the **Flickr30k** dataset (`nlphuji/flickr30k`) for experiments.
+
 HuggingFace link: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
 ---
 
