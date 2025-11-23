@@ -87,9 +87,9 @@ To study transformer architectures for image captioning, compare baseline and fi
 
 # 🧠 Models and Frameworks
 
-**Qwen/Qwen3-VL-2B-Instruct** – Vision–language transformer used as the main architecture for caption generation.
+#### **Qwen/Qwen3-VL-2B-Instruct** – Vision–language transformer used as the main architecture for caption generation.
 
-**BLIP** - (Bootstrapped Language-Image Pretraining) is a vision-language pretraining (VLP) framework designed for both understanding and generation tasks.
+#### **BLIP** - (Bootstrapped Language-Image Pretraining) is a vision-language pretraining (VLP) framework designed for both understanding and generation tasks.
 ---
 
 # 📄 License
