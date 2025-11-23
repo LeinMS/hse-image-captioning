@@ -5,7 +5,7 @@ The main focus is evaluating how different visual encoders and fine-tuning strat
 
 We use **Qwen/Qwen3-VL-2B-Instruct** as the base model and the **Flickr30k** dataset (`nlphuji/flickr30k`) for experiments.
 
-HuggingFace link: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
+#### HuggingFace link: https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
 ---
 
 ## 📌 Project Goal
@@ -81,7 +81,7 @@ To study transformer architectures for image captioning, compare baseline and fi
 # 📚 Dataset
 
 **Flickr30k**  
-HuggingFace link: https://huggingface.co/datasets/nlphuji/flickr30k
+#### HuggingFace link: https://huggingface.co/datasets/nlphuji/flickr30k
 
 ---
 
