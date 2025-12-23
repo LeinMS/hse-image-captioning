@@ -15,13 +15,13 @@ from lora_layer import LoRALinear
 from model_patch import patch_blip1_visual_transformer
 
 # ====
-MODEL_NAME   = "Salesforce/blip-image-captioning-base"
+MODEL_NAME   = "./.venv/base/"
 JSONL_PATH   = "./dataset/annotations.jsonl"
 IMAGE_ROOT   = "./dataset/"
 OUTPUT_DIR   = "./lora_blip_output"
 
 BATCH_SIZE   = 2
-NUM_EPOCHS   = 50
+NUM_EPOCHS   = 5
 LR           = 1e-4
 
 LORA_R       = 16
@@ -72,6 +72,58 @@ def main():
     model      = BlipForConditionalGeneration.from_pretrained(MODEL_NAME)
     processor  = BlipProcessor.from_pretrained(MODEL_NAME)
 
+
+
+    import torch
+    import torch.nn as nn
+    from torchvision.models import resnet18
+    class ResNetPatchEmbedding(nn.Module):
+        def __init__(self, hidden_size: int):
+            super().__init__()
+            backbone = resnet18()
+            self.stem = nn.Sequential(
+                backbone.conv1,
+                backbone.bn1,
+                backbone.relu,
+                backbone.maxpool,
+                backbone.layer1,
+                backbone.layer2,
+                backbone.layer3,
+                backbone.layer4,
+            )
+            self.out_channels = backbone.layer4[-1].conv2.out_channels  # 512 для resnet18
+            self.proj = nn.Conv2d(self.out_channels, hidden_size, 3, 3, 1)
+            self._first_conv = backbone.conv1
+
+        @property
+        def weight(self):
+            return self._first_conv.weight
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            x = self.stem(x)
+            x = self.proj(x)
+            # print(x.shape)
+            x = x.flatten(2)
+
+            return x
+
+    def replace_blip_patch_with_resnet(blip_model):
+        hidden_size = blip_model.config.vision_config.hidden_size
+        resnet_patch = ResNetPatchEmbedding(hidden_size=hidden_size)
+
+        if hasattr(blip_model.vision_model, "embeddings") and \
+                hasattr(blip_model.vision_model.embeddings, "patch_embedding"):
+            blip_model.vision_model.embeddings.patch_embedding = resnet_patch
+        elif hasattr(blip_model.vision_model, "patch_embed"):
+            blip_model.vision_model.patch_embed = resnet_patch
+        else:
+            raise RuntimeError("Cannot find patch embedding module in BLIP vision_model")
+
+    replace_blip_patch_with_resnet(model)
+    print(model.vision_model)
+
+
+
     # LoRA Patch
     print(f"Apply LoRA Patch to the visual backbone（r={LORA_R}, alpha={LORA_ALPHA}, dropout={LORA_DROPOUT}）")
     patch_blip1_visual_transformer(
@@ -95,7 +147,7 @@ def main():
     scheduler  = get_cosine_schedule_with_warmup(
         optimizer, num_warmup_steps=WARMUP_STEPS, num_training_steps=total_steps
     )
-    print(f"Total number of optimization steps: {total_steps}  |  warm-up 步数: {WARMUP_STEPS}")
+    print(f"Total number of optimization steps: {total_steps}  |  warm-up steps: {WARMUP_STEPS}")
 
     # AMP settings
     if USE_FP16 and DEVICE == "cuda":

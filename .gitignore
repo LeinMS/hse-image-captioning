@@ -1,3 +1,5 @@
 # created by virtualenv automatically
 .venv/
 dataset/
+lora_blip_output/
+training/
