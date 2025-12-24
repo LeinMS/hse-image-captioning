@@ -20,8 +20,8 @@ JSONL_PATH   = "./dataset/annotations.jsonl"
 IMAGE_ROOT   = "./dataset/"
 OUTPUT_DIR   = "./lora_blip_output"
 
-BATCH_SIZE   = 2
-NUM_EPOCHS   = 5
+BATCH_SIZE   = 4
+NUM_EPOCHS   = 1
 LR           = 1e-4
 
 LORA_R       = 16
@@ -67,61 +67,66 @@ def collate_fn(batch):
     return {k: torch.stack([b[k] for b in batch]) for k in keys}
 
 # =====
+
+
+import torch
+import torch.nn as nn
+class ResNetPatchEmbedding(nn.Module):
+    def __init__(self):
+        super().__init__()
+        backbone = torch.hub.load('pytorch/vision', 'resnet18')
+        self.stem = nn.Sequential(
+            backbone.conv1,
+            backbone.bn1,
+            backbone.relu,
+            backbone.maxpool,
+            backbone.layer1,
+            backbone.layer2,
+            backbone.layer3,
+            backbone.layer4,
+        )
+        self.proj = nn.Conv2d(512, 768, 1, 1, 0)
+        self.fc = nn.Linear(768, 10)
+        self._first_conv = backbone.conv1
+
+    @property
+    def weight(self):
+        return self._first_conv.weight
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.stem(x)
+        x = self.proj(x)
+        # print(x.shape)
+        x = x.flatten(2)
+
+        return x
+
+def replace_blip_patch_with_resnet(blip_model):
+    hidden_size = blip_model.config.vision_config.hidden_size
+    resnet_patch = ResNetPatchEmbedding()
+    del resnet_patch.fc
+    resnet_patch.load_state_dict(torch.load('model_resnet.pth', weights_only=True), strict=False)
+
+    if hasattr(blip_model.vision_model, "embeddings") and \
+            hasattr(blip_model.vision_model.embeddings, "patch_embedding"):
+        blip_model.vision_model.embeddings.patch_embedding = resnet_patch
+    elif hasattr(blip_model.vision_model, "patch_embed"):
+        blip_model.vision_model.patch_embed = resnet_patch
+    else:
+        raise RuntimeError("Cannot find patch embedding module in BLIP vision_model")
+
+
+#=======
+
+
 def main():
     print(f"Loading Model: {MODEL_NAME}")
     model      = BlipForConditionalGeneration.from_pretrained(MODEL_NAME)
     processor  = BlipProcessor.from_pretrained(MODEL_NAME)
 
 
-
-    import torch
-    import torch.nn as nn
-    from torchvision.models import resnet18
-    class ResNetPatchEmbedding(nn.Module):
-        def __init__(self, hidden_size: int):
-            super().__init__()
-            backbone = resnet18()
-            self.stem = nn.Sequential(
-                backbone.conv1,
-                backbone.bn1,
-                backbone.relu,
-                backbone.maxpool,
-                backbone.layer1,
-                backbone.layer2,
-                backbone.layer3,
-                backbone.layer4,
-            )
-            self.out_channels = backbone.layer4[-1].conv2.out_channels  # 512 для resnet18
-            self.proj = nn.Conv2d(self.out_channels, hidden_size, 3, 3, 1)
-            self._first_conv = backbone.conv1
-
-        @property
-        def weight(self):
-            return self._first_conv.weight
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            x = self.stem(x)
-            x = self.proj(x)
-            # print(x.shape)
-            x = x.flatten(2)
-
-            return x
-
-    def replace_blip_patch_with_resnet(blip_model):
-        hidden_size = blip_model.config.vision_config.hidden_size
-        resnet_patch = ResNetPatchEmbedding(hidden_size=hidden_size)
-
-        if hasattr(blip_model.vision_model, "embeddings") and \
-                hasattr(blip_model.vision_model.embeddings, "patch_embedding"):
-            blip_model.vision_model.embeddings.patch_embedding = resnet_patch
-        elif hasattr(blip_model.vision_model, "patch_embed"):
-            blip_model.vision_model.patch_embed = resnet_patch
-        else:
-            raise RuntimeError("Cannot find patch embedding module in BLIP vision_model")
-
     replace_blip_patch_with_resnet(model)
     print(model.vision_model)
-
 
 
     # LoRA Patch

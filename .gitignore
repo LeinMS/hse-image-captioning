@@ -3,3 +3,5 @@
 dataset/
 lora_blip_output/
 training/
+data/MNIST
+model_resnet.pth

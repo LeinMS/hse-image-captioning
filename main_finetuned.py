@@ -6,8 +6,8 @@ from model_patch import patch_blip1_visual_transformer
 
 # =====
 MODEL_NAME = "./.venv/base/"
-LORA_PATH = "./lora_blip_output/lora_bs2_ep5_lr0.0001_r16_a32_20251223_214940.pth"
-IMAGE_PATH = "./dataset/image_train/green_on_blue_0097.jpg"
+LORA_PATH = "./lora_blip_output/lora_bs4_ep1_lr0.0001_r16_a32_20251224_122053.pth"
+IMAGE_PATH = "./dataset/image_train/blue_0011.jpg"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ====
@@ -20,11 +20,10 @@ processor = BlipProcessor.from_pretrained(MODEL_NAME)
 
 import torch
 import torch.nn as nn
-from torchvision.models import resnet18
 class ResNetPatchEmbedding(nn.Module):
-    def __init__(self, hidden_size: int):
+    def __init__(self):
         super().__init__()
-        backbone = resnet18()
+        backbone = torch.hub.load('pytorch/vision', 'resnet18')
         self.stem = nn.Sequential(
             backbone.conv1,
             backbone.bn1,
@@ -35,8 +34,8 @@ class ResNetPatchEmbedding(nn.Module):
             backbone.layer3,
             backbone.layer4,
         )
-        self.out_channels = backbone.layer4[-1].conv2.out_channels  # 512 для resnet18
-        self.proj = nn.Conv2d(self.out_channels, hidden_size, 3, 3, 1)
+        self.proj = nn.Conv2d(512, 768, 1, 1, 0)
+        self.fc = nn.Linear(768, 10)
         self._first_conv = backbone.conv1
 
     @property
@@ -46,31 +45,31 @@ class ResNetPatchEmbedding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.stem(x)
         x = self.proj(x)
-        #print(x.shape)
+        # print(x.shape)
         x = x.flatten(2)
 
         return x
 
 def replace_blip_patch_with_resnet(blip_model):
     hidden_size = blip_model.config.vision_config.hidden_size
-    resnet_patch = ResNetPatchEmbedding(hidden_size=hidden_size)
+    resnet_patch = ResNetPatchEmbedding()
+    del resnet_patch.fc
+    resnet_patch.load_state_dict(torch.load('model_resnet.pth', weights_only=True), strict=False)
 
     if hasattr(blip_model.vision_model, "embeddings") and \
-       hasattr(blip_model.vision_model.embeddings, "patch_embedding"):
+            hasattr(blip_model.vision_model.embeddings, "patch_embedding"):
         blip_model.vision_model.embeddings.patch_embedding = resnet_patch
     elif hasattr(blip_model.vision_model, "patch_embed"):
         blip_model.vision_model.patch_embed = resnet_patch
     else:
         raise RuntimeError("Cannot find patch embedding module in BLIP vision_model")
 
+
+
+
+
 replace_blip_patch_with_resnet(model)
 print(model.vision_model)
-
-
-
-
-
-
 # =========== Patch LoRA ===========
 print("Apply LoRA patch to the visual backbone...")
 patch_blip1_visual_transformer(model, r=16, alpha=32, dropout=0.05, verbose=True)
@@ -84,6 +83,7 @@ if len(missing) > 0:
 if len(unexpected) > 0:
     print("[WARNING] There are extra parameters:", unexpected)
 print(model)
+
 model = model.to(DEVICE)
 model.eval()
 
