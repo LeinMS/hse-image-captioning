@@ -21,8 +21,8 @@ IMAGE_ROOT   = "./dataset/"
 OUTPUT_DIR   = "./lora_blip_output"
 
 BATCH_SIZE   = 4
-NUM_EPOCHS   = 1
-LR           = 1e-4
+NUM_EPOCHS   = 3
+LR           = 1e-3
 
 LORA_R       = 16
 LORA_ALPHA   = 32
@@ -102,7 +102,6 @@ class ResNetPatchEmbedding(nn.Module):
         return x
 
 def replace_blip_patch_with_resnet(blip_model):
-    hidden_size = blip_model.config.vision_config.hidden_size
     resnet_patch = ResNetPatchEmbedding()
     del resnet_patch.fc
     resnet_patch.load_state_dict(torch.load('model_resnet.pth', weights_only=True), strict=False)
@@ -125,8 +124,8 @@ def main():
     processor  = BlipProcessor.from_pretrained(MODEL_NAME)
 
 
-    replace_blip_patch_with_resnet(model)
-    print(model.vision_model)
+    #replace_blip_patch_with_resnet(model)
+    #print(model.vision_model)
 
 
     # LoRA Patch

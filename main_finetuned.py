@@ -6,8 +6,8 @@ from model_patch import patch_blip1_visual_transformer
 
 # =====
 MODEL_NAME = "./.venv/base/"
-LORA_PATH = "./lora_blip_output/lora_bs4_ep1_lr0.0001_r16_a32_20251224_122053.pth"
-IMAGE_PATH = "./dataset/image_train/blue_0011.jpg"
+LORA_PATH = "./lora_blip_output/lora_bs4_ep3_lr0.001_r16_a32_20251224_161918.pth"
+IMAGE_PATH = "./dataset/image_train/blue_on_green_0165.jpg"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ====
@@ -51,7 +51,6 @@ class ResNetPatchEmbedding(nn.Module):
         return x
 
 def replace_blip_patch_with_resnet(blip_model):
-    hidden_size = blip_model.config.vision_config.hidden_size
     resnet_patch = ResNetPatchEmbedding()
     del resnet_patch.fc
     resnet_patch.load_state_dict(torch.load('model_resnet.pth', weights_only=True), strict=False)
@@ -68,8 +67,8 @@ def replace_blip_patch_with_resnet(blip_model):
 
 
 
-replace_blip_patch_with_resnet(model)
-print(model.vision_model)
+#replace_blip_patch_with_resnet(model)
+#print(model.vision_model)
 # =========== Patch LoRA ===========
 print("Apply LoRA patch to the visual backbone...")
 patch_blip1_visual_transformer(model, r=16, alpha=32, dropout=0.05, verbose=True)

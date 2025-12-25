@@ -5,17 +5,16 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from torchvision.transforms import ToTensor, Normalize
-from torchvision.datasets import MNIST, CIFAR10
+from torchvision.datasets import CIFAR100
 from torch.utils.data import DataLoader
-import torchvision.models as models
+from torchvision import models
 
-pretrained_model = models.resnet18(pretrained=True)
 
 
 class ResNetPatchEmbedding(nn.Module):
     def __init__(self):
         super().__init__()
-        backbone = torch.hub.load('pytorch/vision', 'resnet18', pretrained=True)
+        backbone = models.resnet18(models.ResNet18_Weights.IMAGENET1K_V1)
         self.stem = nn.Sequential(
             backbone.conv1,
             backbone.bn1,
@@ -28,7 +27,7 @@ class ResNetPatchEmbedding(nn.Module):
         )
         self.out_channels = backbone.layer4[-1].conv2.out_channels
         self.proj = nn.Conv2d(self.out_channels, 768, 1, 1, 0)
-        self.fc = nn.Linear(768, 10)
+        self.fc = nn.Linear(768, 100)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.stem(x)
@@ -41,49 +40,49 @@ class ResNetPatchEmbedding(nn.Module):
 
 model = ResNetPatchEmbedding()
 
-
 for param in model.parameters():
     param.requires_grad = False
 
 # Parameters of newly constructed modules have requires_grad=True by default
 model.proj = nn.Conv2d(512, 768, 1, 1)
-model.fc = nn.Linear(model.fc.in_features, 10)
+model.fc = nn.Linear(model.fc.in_features, 100)
 
+model.load_state_dict(torch.load('model_resnet.pth'))
 
 from torchvision.transforms.functional import pad
 
 transform_train = transforms.Compose([
     transforms.RandomRotation(10),
-    transforms.Grayscale(num_output_channels=3),  # Convert to RGB format
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize as before
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225])
 ])
 
 transform_test = transforms.Compose([
-    transforms.Grayscale(num_output_channels=3),  # Convert to RGB format
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5], std=[0.5])
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225])
 ])
 
 
-train_dataset = MNIST(root='./data', train=True, download=True, transform=transform_train)
+train_dataset = CIFAR100(root='./data', train=True, download=True, transform=transform_train)
 train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 
 model.to('cuda')
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.SGD(model.parameters(), lr=0.001, weight_decay=0.0001)
+model.train()
 summary(model,(3,32,32))
 
 
-model.load_state_dict(torch.load('model_resnet.pth', weights_only=True))
+
 
 num_epochs = 10
 train_losses = []
 train_correct = 0
 train_total = 0
 for epoch in range(num_epochs):
-    model.train()
     running_loss = 0.0
     for inputs, labels in train_loader:
         optimizer.zero_grad()
