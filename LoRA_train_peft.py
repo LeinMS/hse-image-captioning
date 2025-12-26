@@ -2,6 +2,7 @@ from transformers import AutoModelForVision2Seq, AutoProcessor
 from peft import LoraConfig, get_peft_model
 import os, json, torch
 from PIL import Image
+import matplotlib.pyplot as plt
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -83,9 +84,9 @@ config = LoraConfig(
 model_path = "./.venv/base/"
 
 processor = AutoProcessor.from_pretrained(model_path)
-model = AutoModelForVision2Seq.from_pretrained('./training/caption')
+model = AutoModelForVision2Seq.from_pretrained('./.venv/base/')
 
-replace_blip_patch_with_resnet(model)
+#replace_blip_patch_with_resnet(model)
 
 
 model = get_peft_model(model, config).to(device)
@@ -135,16 +136,17 @@ transform = transforms.Compose([
     transforms.RandomRotation(10),
     transforms.Resize((224, 224))
 ])
-train_dataset   = BlockDataset("./dataset/annotations.jsonl", "./dataset/", processor, transform)
-train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=4, collate_fn=collate_fn)
+train_dataset   = BlockDataset("./dataset/annotations.jsonl", "./dataset/", processor)
+train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=2, collate_fn=collate_fn)
 
 import torch.optim as optim
 optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)
 
 model.train()
 
-
-for epoch in range(10):
+train_losses = []
+losses = []
+for epoch in range(3):
     print("Epoch:", epoch)
     for idx, batch in enumerate(train_dataloader):
         input_ids = batch.pop("input_ids").to(device)
@@ -165,9 +167,41 @@ for epoch in range(10):
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
+        losses.append(loss.detach().to('cpu').item())
 
         if idx % 10 == 0:
             generated_output = model.generate(pixel_values=pixel_values)
             print(processor.batch_decode(generated_output, skip_special_tokens=True))
+            train_losses.append(sum(losses) / len(losses))
+            losses.clear()
 
 model.save_pretrained('./training/caption')
+
+
+def plot_training_loss(trainloss, title="Training Loss", save_path=None):
+
+    plt.figure(figsize=(10, 6))
+    epochs = range(1, len(trainloss) + 1)
+
+    plt.plot(epochs, trainloss, 'b-', linewidth=2, label='Training Loss')
+    plt.xlabel('10xSamples', fontsize=12)
+    plt.ylabel('Loss', fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.grid(True, alpha=0.3)
+    plt.legend(fontsize=11)
+
+    min_loss = min(trainloss)
+    min_epoch = trainloss.index(min_loss) + 1
+    plt.plot(min_epoch, min_loss, 'ro', markersize=5, label=f'Min: {min_loss:.4f}')
+    plt.legend(fontsize=11)
+
+    plt.tight_layout()
+
+    plt.savefig('./BLIP.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+
+plot_training_loss(train_losses)
+with open('blip_loss.txt', 'w', encoding='utf-8') as file:
+    for loss in train_losses:
+        file.write(str(loss) + '\n')

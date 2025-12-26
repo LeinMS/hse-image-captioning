@@ -1,7 +1,7 @@
 from PIL import Image
 from transformers import AutoModelForVision2Seq, AutoProcessor
 from torch import nn
-
+import time
 
 
 
@@ -60,14 +60,19 @@ model_id = ".venv/base"
 
 processor = AutoProcessor.from_pretrained(model_id)
 
-model = AutoModelForVision2Seq.from_pretrained('./training/caption')
+model = AutoModelForVision2Seq.from_pretrained('./training/Flickr30k_1')
+#model = AutoModelForVision2Seq.from_pretrained('./.venv/base')
+#model = AutoModelForVision2Seq.from_pretrained('./training/caption')
+
 model.eval()
-replace_blip_patch_with_resnet(model)
+#replace_blip_patch_with_resnet(model)
 #print(model)
 
-images = [Image.open("dataset/image_train/green_on_blue_0188.jpg")]
+images = [Image.open(".venv/Flick/Images/301246.jpg")]
 
+time_start = time.time()
 processed = processor(images=images, padding="max_length", return_tensors="pt")
 generated_output = model.generate(pixel_values=processed['pixel_values'], max_new_tokens=64)
 
+print(time.time() - time_start)
 print(processor.batch_decode(generated_output, skip_special_tokens=True))

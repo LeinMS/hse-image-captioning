@@ -47,7 +47,7 @@ for param in model.parameters():
 model.proj = nn.Conv2d(512, 768, 1, 1)
 model.fc = nn.Linear(model.fc.in_features, 100)
 
-model.load_state_dict(torch.load('model_resnet.pth'))
+model.load_state_dict(torch.load('model_resnet1.pth'))
 
 from torchvision.transforms.functional import pad
 
@@ -71,7 +71,7 @@ train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
 model.to('cuda')
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.001, weight_decay=0.0001)
+optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=0.0001)
 model.train()
 summary(model,(3,32,32))
 
@@ -102,4 +102,33 @@ for epoch in range(num_epochs):
 
 print(f'Finished fine-tuning with {train_accuracy} accuracy')
 
-torch.save(model.state_dict(), 'model_resnet.pth')
+torch.save(model.state_dict(), 'model_resnet1.pth')
+
+
+def plot_training_loss(trainloss, title="Training Loss", save_path=None):
+
+    plt.figure(figsize=(10, 6))
+    epochs = range(1, len(trainloss) + 1)
+
+    plt.plot(epochs, trainloss, 'b-', linewidth=2, label='Training Loss')
+    plt.xlabel('Epoch', fontsize=12)
+    plt.ylabel('Loss', fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.grid(True, alpha=0.3)
+    plt.legend(fontsize=11)
+
+    min_loss = min(trainloss)
+    min_epoch = trainloss.index(min_loss) + 1
+    plt.plot(min_epoch, min_loss, 'ro', markersize=5, label=f'Min: {min_loss:.4f}')
+    plt.legend(fontsize=11)
+
+    plt.tight_layout()
+
+    plt.savefig('./resnet.png', dpi=300, bbox_inches='tight')
+    print(f"Graph saved to {save_path}")
+    plt.close()
+
+plot_training_loss(train_losses)
+with open('resnet.txt', 'w', encoding='utf-8') as file:
+    for loss in train_losses:
+        file.write(str(loss) + '\n')
