@@ -21,7 +21,7 @@ class ResNetPatchEmbedding(nn.Module):
             backbone.conv1,
             backbone.bn1,
             backbone.relu,
-            backbone.maxpool,
+            #backbone.maxpool,
             backbone.layer1,
             backbone.layer2,
             backbone.layer3,
@@ -47,7 +47,7 @@ def replace_blip_patch_with_resnet(blip_model):
     hidden_size = blip_model.config.vision_config.hidden_size
     resnet_patch = ResNetPatchEmbedding()
     del resnet_patch.fc
-    resnet_patch.load_state_dict(torch.load('model_resnet.pth', weights_only=True), strict=False)
+    resnet_patch.load_state_dict(torch.load('model_resnet2.pth', weights_only=True), strict=False)
 
     if hasattr(blip_model.vision_model, "embeddings") and \
             hasattr(blip_model.vision_model.embeddings, "patch_embedding"):
@@ -82,11 +82,11 @@ config = LoraConfig(
 )
 
 model_path = "./.venv/base/"
-model = AutoModelForVision2Seq.from_pretrained(model_path)
+model = AutoModelForVision2Seq.from_pretrained('./training/Flickr30k_resnet/')
 processor = AutoProcessor.from_pretrained(model_path)
 
 
-#replace_blip_patch_with_resnet(model)
+replace_blip_patch_with_resnet(model)
 
 
 model = get_peft_model(model, config).to(device)
@@ -151,7 +151,7 @@ def plot_training_loss(trainloss, title="Training Loss", save_path=None):
     epochs = range(1, len(trainloss) + 1)
 
     plt.plot(epochs, trainloss, 'b-', linewidth=2, label='Training Loss')
-    plt.xlabel('1000xSamples', fontsize=12)
+    plt.xlabel('100xSamples', fontsize=12)
     plt.ylabel('Loss', fontsize=12)
     plt.title(title, fontsize=14, fontweight='bold')
     plt.grid(True, alpha=0.3)
@@ -164,15 +164,9 @@ def plot_training_loss(trainloss, title="Training Loss", save_path=None):
 
     plt.tight_layout()
 
-    plt.savefig('./BLIP_Fleckr.png', dpi=300, bbox_inches='tight')
+    plt.savefig('./BLIP_FleckrResNet.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-from torchvision import transforms
-transform = transforms.Compose([
-    transforms.RandomHorizontalFlip(2),
-    transforms.RandomVerticalFlip(2),
-    transforms.RandomRotation(10)
-])
 
 train_dataset   = FlickrCSV("./.venv/Flick/Images", "./.venv/Flick/captions.txt", processor)
 train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=2, collate_fn=collate_fn)
@@ -200,8 +194,6 @@ for epoch in range(1):
 
         loss = outputs.loss
 
-        print("idx:", idx, "Loss:", loss.item())
-
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -209,16 +201,15 @@ for epoch in range(1):
 
         if idx % 100 == 0:
             generated_output = model.generate(pixel_values=pixel_values)
+            print("idx:", idx, "Loss:", loss.item())
             print(processor.batch_decode(generated_output, skip_special_tokens=True))
             train_losses.append(sum(losses) / len(losses))
             losses.clear()
 
-            if idx >= 10000: break
 
 
-
-model.save_pretrained('./training/Flickr30k_1/')
+model.save_pretrained('./training/Flickr30k_resnet/')
 plot_training_loss(train_losses)
-with open('blip_Fleckr_loss.txt', 'w', encoding='utf-8') as file:
+with open('blip_FleckrResNet_loss.txt', 'w', encoding='utf-8') as file:
     for loss in train_losses:
         file.write(str(loss) + '\n')

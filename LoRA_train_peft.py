@@ -84,10 +84,9 @@ config = LoraConfig(
 model_path = "./.venv/base/"
 
 processor = AutoProcessor.from_pretrained(model_path)
-model = AutoModelForVision2Seq.from_pretrained('./.venv/base/')
+model = AutoModelForVision2Seq.from_pretrained('./training/caption+resnet')
 
-#replace_blip_patch_with_resnet(model)
-
+replace_blip_patch_with_resnet(model)
 
 model = get_peft_model(model, config).to(device)
 model.print_trainable_parameters()
@@ -137,7 +136,7 @@ transform = transforms.Compose([
     transforms.Resize((224, 224))
 ])
 train_dataset   = BlockDataset("./dataset/annotations.jsonl", "./dataset/", processor)
-train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=2, collate_fn=collate_fn)
+train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=4, collate_fn=collate_fn)
 
 import torch.optim as optim
 optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)
@@ -175,9 +174,9 @@ for epoch in range(3):
             train_losses.append(sum(losses) / len(losses))
             losses.clear()
 
-model.save_pretrained('./training/caption')
+model.save_pretrained('./training/caption+resnet')
 
-
+"""
 def plot_training_loss(trainloss, title="Training Loss", save_path=None):
 
     plt.figure(figsize=(10, 6))
@@ -205,3 +204,4 @@ plot_training_loss(train_losses)
 with open('blip_loss.txt', 'w', encoding='utf-8') as file:
     for loss in train_losses:
         file.write(str(loss) + '\n')
+"""

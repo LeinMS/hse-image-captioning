@@ -6,3 +6,5 @@ training/
 data/MNIST
 data/cifar-100-python
 model_resnet.pth
+model_resnet1.pth
+model_resnet2.pth

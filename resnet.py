@@ -19,7 +19,7 @@ class ResNetPatchEmbedding(nn.Module):
             backbone.conv1,
             backbone.bn1,
             backbone.relu,
-            backbone.maxpool,
+            #backbone.maxpool,
             backbone.layer1,
             backbone.layer2,
             backbone.layer3,
@@ -27,7 +27,7 @@ class ResNetPatchEmbedding(nn.Module):
         )
         self.out_channels = backbone.layer4[-1].conv2.out_channels
         self.proj = nn.Conv2d(self.out_channels, 768, 1, 1, 0)
-        self.fc = nn.Linear(768, 100)
+        self.fc = nn.Linear(768*4, 100)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.stem(x)
@@ -47,11 +47,12 @@ for param in model.parameters():
 model.proj = nn.Conv2d(512, 768, 1, 1)
 model.fc = nn.Linear(model.fc.in_features, 100)
 
-model.load_state_dict(torch.load('model_resnet1.pth'))
+model.load_state_dict(torch.load('model_resnet2.pth'))
 
 from torchvision.transforms.functional import pad
 
 transform_train = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(10),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -66,12 +67,12 @@ transform_test = transforms.Compose([
 
 
 train_dataset = CIFAR100(root='./data', train=True, download=True, transform=transform_train)
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
 
 model.to('cuda')
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=0.0001)
+optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=0.001)
 model.train()
 summary(model,(3,32,32))
 
@@ -102,9 +103,9 @@ for epoch in range(num_epochs):
 
 print(f'Finished fine-tuning with {train_accuracy} accuracy')
 
-torch.save(model.state_dict(), 'model_resnet1.pth')
+torch.save(model.state_dict(), 'model_resnet2.pth')
 
-
+"""
 def plot_training_loss(trainloss, title="Training Loss", save_path=None):
 
     plt.figure(figsize=(10, 6))
@@ -132,3 +133,4 @@ plot_training_loss(train_losses)
 with open('resnet.txt', 'w', encoding='utf-8') as file:
     for loss in train_losses:
         file.write(str(loss) + '\n')
+"""

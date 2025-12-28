@@ -1,12 +1,9 @@
 from PIL import Image
 from transformers import AutoModelForVision2Seq, AutoProcessor
-from torch import nn
 import time
-
-
-
 import torch
 import torch.nn as nn
+
 class ResNetPatchEmbedding(nn.Module):
     def __init__(self):
         super().__init__()
@@ -60,15 +57,16 @@ model_id = ".venv/base"
 
 processor = AutoProcessor.from_pretrained(model_id)
 
-model = AutoModelForVision2Seq.from_pretrained('./training/Flickr30k_1')
+#model = AutoModelForVision2Seq.from_pretrained('./training/Flickr30k_1')
 #model = AutoModelForVision2Seq.from_pretrained('./.venv/base')
 #model = AutoModelForVision2Seq.from_pretrained('./training/caption')
+model = AutoModelForVision2Seq.from_pretrained('./training/caption+resnet')
 
 model.eval()
-#replace_blip_patch_with_resnet(model)
+replace_blip_patch_with_resnet(model)
 #print(model)
 
-images = [Image.open(".venv/Flick/Images/301246.jpg")]
+images = [Image.open("dataset/image_train/blue_on_green_0012.jpg")]
 
 time_start = time.time()
 processed = processor(images=images, padding="max_length", return_tensors="pt")
